@@ -1,0 +1,67 @@
+---
+- name: Setup localhost for brickdev and cloudru
+  hosts: localhost
+  become: yes
+  vars:
+    brickdev_password: "{{ 'pass' | password_hash('sha512', 'salt') }}"
+    ssh_public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDDW1sg+ys6EEZd6ZzbDl>
+  tasks:
+    - name: Create user brickdev
+      user:
+        name: brickdev
+        password: "{{ brickdev_password }}"
+        shell: /bin/bash
+        create_home: yes
+
+    - name: Create user cloudru
+      user:
+        name: cloudru
+        shell: /bin/bash
+        create_home: yes
+
+    - name: Allow SSH key authentication
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        state: present
+        regexp: '^#?PasswordAuthentication'
+        line: 'PasswordAuthentication no'
+
+    - name: Disable root login over SSH
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        state: present
+        regexp: '^#?PermitRootLogin'
+        line: 'PermitRootLogin no'
+
+    - name: Create .ssh directory for cloudru user
+      file:
+        path: /home/cloudru/.ssh
+        state: directory
+        mode: '0700'
+        owner: cloudru
+        group: cloudru
+
+    - name: Add provided public key to authorized_keys for cloudru
+      authorized_key:
+        user: cloudru
+        state: present
+        key: "{{ ssh_public_key }}"
+
+    - name: Create .ssh directory for cloudru user
+      file:
+        path: /home/cloudru/.ssh
+        state: directory
+        mode: '0700'
+        owner: cloudru
+        group: cloudru
+
+    - name: Add public key to authorized_keys for cloudru
+      authorized_key:
+        user: cloudru
+        state: present
+        key: "{{ ssh_public_key }}"
+
+    - name: Restart SSH service
+      service:
+        name: ssh
+        state: restarted
